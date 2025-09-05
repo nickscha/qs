@@ -31,7 +31,7 @@ LICENSE
 #endif
 
 #ifndef QS_INSERTION_SORT_THRESHOLD
-#define QS_INSERTION_SORT_THRESHOLD 16
+#define QS_INSERTION_SORT_THRESHOLD 24
 #endif
 
 typedef int (*qs_cmp_func)(void *, void *);
