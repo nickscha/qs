@@ -10,6 +10,7 @@ LICENSE
   See end of file for detailed license information.
 
 */
+#define QS_INSERTION_SORT_DISABLE
 #include "../qs.h"        /* Quicksort Algorithm         */
 #include "../deps/test.h" /* Simple Testing framework    */
 #include "../deps/perf.h" /* Simple Performance profiler */
@@ -31,13 +32,14 @@ int main(void)
 
   PERF_PROFILE(qs_quicksort(arr, n, sizeof(arr[0]), int_cmp));
 
-  assert(arr[0] == 1);
-  assert(arr[n - 1] == 2929);
-
   for (i = 0; i < n; ++i)
   {
     printf("%d ", arr[i]);
   }
+  printf("\n");
+
+  assert(arr[0] == 1);
+  assert(arr[n - 1] == 2929);
 
   return 0;
 }

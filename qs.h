@@ -36,6 +36,10 @@ LICENSE
 #endif
 #endif
 
+#ifndef QS_TMPBUF
+#define QS_TMPBUF 512 /* pivot buffer size for safety */
+#endif
+
 typedef int (*qs_cmp_func)(void *, void *);
 
 QS_API QS_INLINE void qs_swap(char *a, char *b, unsigned size)
@@ -74,56 +78,102 @@ QS_API QS_INLINE void qs_swap(char *a, char *b, unsigned size)
 }
 
 /* Median-of-three pivot selection */
-QS_API QS_INLINE char *qs_median_of_three(char *base, unsigned size, int low, int high, qs_cmp_func cmp)
+QS_API QS_INLINE int qs_median_of_three(char *base, unsigned size, int low, int high, qs_cmp_func cmp)
 {
   int mid = low + ((high - low) >> 1);
-  char *a = base + low * (int)size;
-  char *b = base + mid * (int)size;
-  char *c = base + high * (int)size;
+  char *pa = base + low * (int)size;
+  char *pb = base + mid * (int)size;
+  char *pc = base + high * (int)size;
 
-  if (cmp(a, b) > 0)
+  if (cmp(pa, pb) > 0)
   {
-    qs_swap(a, b, size);
+    qs_swap(pa, pb, size);
   }
 
-  if (cmp(a, c) > 0)
+  if (cmp(pa, pc) > 0)
   {
-    qs_swap(a, c, size);
+    qs_swap(pa, pc, size);
   }
 
-  if (cmp(b, c) > 0)
+  if (cmp(pb, pc) > 0)
   {
-    qs_swap(b, c, size);
+    qs_swap(pb, pc, size);
   }
 
-  return b; /* middle value as pivot */
+  return (int)((pb - base) / (int)size);
 }
 
 /* Hoare partitioning using median-of-three */
 QS_API QS_INLINE int qs_partition(char *base, unsigned size, int low, int high, qs_cmp_func cmp)
 {
-  char *pivot = qs_median_of_three(base, size, low, high, cmp);
+  int pidx = qs_median_of_three(base, size, low, high, cmp);
+  char *lo;
+  char *hi;
+  int step;
+  unsigned int k;
 
-  int i = low - 1;
-  int j = high + 1;
+  unsigned char pivot_buf[QS_TMPBUF];
+  char *pivot_src = base + pidx * (int)size;
+
+  for (k = 0; k < size; ++k)
+  {
+    pivot_buf[k] = (unsigned char)pivot_src[k];
+  }
+
+  if ((unsigned)size <= (unsigned)QS_TMPBUF)
+  {
+    unsigned k;
+    unsigned char *src = (unsigned char *)(base + pidx * (int)size);
+
+    for (k = 0; k < size; ++k)
+    {
+      pivot_buf[k] = src[k];
+    }
+  }
+  else
+  {
+    /*
+     * For very large records we will move the pivot to 'high' in array to
+     * stabilize (avoid allocating huge local buffer). This keeps correctness.
+     */
+    qs_swap(base + pidx * (int)size, base + high * (int)size, size);
+    /* copy pivot from high (it is inside array but at a stable slot) */
+    {
+      unsigned k;
+      unsigned char *src = (unsigned char *)(base + high * (int)size);
+
+      for (k = 0; k < size; ++k)
+      {
+        pivot_buf[k] = src[k];
+      }
+    }
+  }
+
+  /* pointer walkers to avoid repeated multiplications */
+  lo = base + low * (int)size;
+  hi = base + high * (int)size;
+  step = (int)size;
 
   for (;;)
   {
-    do
+    while (cmp(lo, pivot_buf) < 0)
     {
-      ++i;
-    } while (cmp(base + i * (int)size, pivot) < 0);
-    do
-    {
-      --j;
-    } while (cmp(base + j * (int)size, pivot) > 0);
-
-    if (i >= j)
-    {
-      return j;
+      lo += step;
     }
 
-    qs_swap(base + i * (int)size, base + j * (int)size, size);
+    while (cmp(hi, pivot_buf) > 0)
+    {
+      hi -= step;
+    }
+
+    if (lo >= hi)
+    {
+      return (int)((hi - base) / (int)size);
+    }
+
+    qs_swap(lo, hi, size);
+    lo += step;
+    hi -= step;
   }
 }
 
@@ -188,7 +238,11 @@ QS_API QS_INLINE void qs_quicksort(void *base, unsigned nmemb, unsigned size, qs
         stack[top++] = p + 1;
         stack[top++] = high;
       }
-      high = p;
+      if (low < p)
+      {
+        stack[top++] = low;
+        stack[top++] = p;
+      }
     }
     else
     {
@@ -197,7 +251,11 @@ QS_API QS_INLINE void qs_quicksort(void *base, unsigned nmemb, unsigned size, qs
         stack[top++] = low;
         stack[top++] = p;
       }
-      low = p + 1;
+      if (p + 1 < high)
+      {
+        stack[top++] = p + 1;
+        stack[top++] = high;
+      }
     }
   }
 }
