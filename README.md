@@ -58,13 +58,20 @@ int main(void) {
 }
 ```
 
-### Set Insertion-Sort Threshold
+### Insertion-Sort Settings
 
 By default this quicksort algorithm falls back to a insertion sort for <= 24 elements.
 If you want to change that threshold you can either use the compile flag `-DQS_INSERTION_SORT_THRESHOLD=32` or define it before including the header.
 
 ```C
 #define QS_INSERTION_SORT_THRESHOLD 32
+#include "csr.h"
+```
+
+If you don't need any insertion sort and want to save some extra branches you can also disable insertion sort fallback completely.
+
+```C
+#define QS_INSERTION_SORT_DISABLE
 #include "csr.h"
 ```
 

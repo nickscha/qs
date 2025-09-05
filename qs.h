@@ -30,8 +30,10 @@ LICENSE
 #define QS_API static
 #endif
 
+#ifndef QS_INSERTION_SORT_DISABLE
 #ifndef QS_INSERTION_SORT_THRESHOLD
 #define QS_INSERTION_SORT_THRESHOLD 24
+#endif
 #endif
 
 typedef int (*qs_cmp_func)(void *, void *);
@@ -125,6 +127,7 @@ QS_API QS_INLINE int qs_partition(char *base, unsigned size, int low, int high, 
   }
 }
 
+#ifndef QS_INSERTION_SORT_DISABLE
 /* Insertion sort */
 QS_API QS_INLINE void qs_insertion_sort(char *base, unsigned size, int low, int high, qs_cmp_func cmp)
 {
@@ -140,6 +143,7 @@ QS_API QS_INLINE void qs_insertion_sort(char *base, unsigned size, int low, int 
     }
   }
 }
+#endif
 
 /* Hybrid Quicksort with manual stack */
 QS_API QS_INLINE void qs_quicksort(void *base, unsigned nmemb, unsigned size, qs_cmp_func cmp)
@@ -164,12 +168,14 @@ QS_API QS_INLINE void qs_quicksort(void *base, unsigned nmemb, unsigned size, qs
     high = stack[--top];
     low = stack[--top];
 
+#ifndef QS_INSERTION_SORT_DISABLE
     /* Use insertion sort for small partitions */
     if (high - low <= QS_INSERTION_SORT_THRESHOLD)
     {
       qs_insertion_sort((char *)base, size, low, high, cmp);
       continue;
     }
+#endif
 
     /* Partition */
     p = qs_partition((char *)base, size, low, high, cmp);
